@@ -134,10 +134,26 @@ export default function Page() {
               {(['home', 'doctors', 'symptoms', 'tests', 'medicines'] as View[]).map((item) => <button key={item} onClick={() => setView(item)} className={`rounded-full px-4 py-2 text-sm font-semibold capitalize transition-colors ${view === item ? 'bg-secondary text-primary' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}>{item === 'home' ? 'Overview' : item === 'symptoms' ? 'AI Triage' : item === 'tests' ? 'Tests & Reports' : item}</button>)}
             </nav>
             <div className="flex items-center gap-2">
-              <button onClick={() => setDark(!dark)} className="grid size-10 place-items-center rounded-full border border-border bg-card text-primary transition hover:-rotate-12" aria-label="Toggle day and night mode">{dark ? <Sun className="size-4" /> : <Moon className="size-4" />}</button>
-              <button onClick={() => setView('account')} className="hidden items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/15 sm:flex"><UserRound className="size-4" />Patient account</button>
-              <button onClick={() => setMenuOpen(!menuOpen)} className="grid size-10 place-items-center rounded-full border border-border md:hidden" aria-label="Open menu">{menuOpen ? <X className="size-5" /> : <Menu className="size-5" />}</button>
-            </div>
+  <button
+    onClick={() => alert('SOS activated')}
+    className="grid size-10 place-items-center rounded-full border border-red-200 bg-red-50 p-1.5 shadow-sm transition hover:scale-105"
+    aria-label="SOS emergency"
+  >
+    <img src="/sos.png" alt="SOS" className="size-7 object-contain" />
+  </button>
+
+  <button onClick={() => setDark(!dark)} className="grid size-10 place-items-center rounded-full border border-border bg-card text-primary transition hover:-rotate-12" aria-label="Toggle day and night mode">
+    {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
+  </button>
+
+  <button onClick={() => setView('account')} className="hidden items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/15 sm:flex">
+    <UserRound className="size-4" />Patient account
+  </button>
+
+  <button onClick={() => setMenuOpen(!menuOpen)} className="grid size-10 place-items-center rounded-full border border-border md:hidden" aria-label="Open menu">
+    {menuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+  </button>
+</div>
           </div>
           {menuOpen && <nav className="flex flex-col gap-1 border-t border-border px-5 py-3 md:hidden">{(['home', 'doctors', 'symptoms', 'tests', 'medicines'] as View[]).map((item) => <button key={item} onClick={() => { setView(item); setMenuOpen(false) }} className="rounded-lg px-3 py-2 text-left text-sm font-semibold capitalize">{item}</button>)}</nav>}
         </header>
