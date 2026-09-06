@@ -1,0 +1,96 @@
+name: Add cart and demo checkout
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  update-cart:
+    if: github.event.head_commit.message != 'Add tests and packages cart flow'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add cart flow to tests and packages
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('app/page.tsx')
+          s = p.read_text()
+
+          old_import = 'UserRound, Users, X, Navigation, Share2, Star, MapPinned, PhoneIncoming, Loader2, RotateCcw'
+          new_import = 'UserRound, Users, X, Navigation, Share2, Star, MapPinned, PhoneIncoming, Loader2, RotateCcw, ShoppingCart, Trash2, CreditCard, Minus, Plus'
+          if old_import not in s:
+              raise SystemExit('import marker not found')
+          s = s.replace(old_import, new_import, 1)
+
+          old_type = "type Doctor = { name:string; speciality:string; meta:string; initials:string; tone:string; rating:string; experience:string; languages:string; mode:string; availability:string; fee:string; location:string; bio:string; local:boolean }"
+          new_type = old_type + "\ntype CartItem = { title:string; type:'Test'|'Package'; price:number; detail:string; quantity:number }\nconst CART_KEY='medthread-demo-cart'\nfunction readCart():CartItem[]{try{return JSON.parse(window.localStorage.getItem(CART_KEY)||'[]')}catch{return []}}\nfunction addToCart(item:Omit<CartItem,'quantity'>){const current=readCart();const index=current.findIndex(x=>x.title===item.title&&x.type===item.type);if(index>=0)current[index]={...current[index],quantity:current[index].quantity+1};else current.push({...item,quantity:1});window.localStorage.setItem(CART_KEY,JSON.stringify(current));window.dispatchEvent(new Event('medthread-cart-updated'))}\n"
+          if old_type not in s:
+              raise SystemExit('doctor type marker not found')
+          s = s.replace(old_type, new_type, 1)
+
+          old_state = "const [toast,setToast]=useState('');\n const filteredDoctors"
+          new_state = "const [toast,setToast]=useState('');const [cartOpen,setCartOpen]=useState(false);const [cart,setCart]=useState<CartItem[]>([]);\n useEffect(()=>{const sync=()=>setCart(readCart());sync();window.addEventListener('medthread-cart-updated',sync);return()=>window.removeEventListener('medthread-cart-updated',sync)},[]);\n const filteredDoctors"
+          if old_state not in s:
+              raise SystemExit('page state marker not found')
+          s = s.replace(old_state, new_state, 1)
+
+          old_header = '<a href="/sos" className="grid size-10 place-items-center rounded-full border border-destructive/30 bg-destructive/10 text-destructive font-black text-[10px]">SOS</a><button onClick={()=>setDark(!dark)}'
+          new_header = '<a href="/sos" className="grid size-10 place-items-center rounded-full border border-destructive/30 bg-destructive/10 text-destructive font-black text-[10px]">SOS</a><button onClick={()=>setCartOpen(true)} className="relative grid size-10 place-items-center rounded-full border border-border bg-card text-primary" aria-label="My cart"><ShoppingCart className="size-4"/>{cart.length>0&&<span className="absolute -right-1 -top-1 grid min-w-5 h-5 place-items-center rounded-full bg-accent px-1 text-[10px] font-black text-accent-foreground">{cart.reduce((n,i)=>n+i.quantity,0)}</span>}</button><button onClick={()=>setDark(!dark)}'
+          if old_header not in s:
+              raise SystemExit('header marker not found')
+          s = s.replace(old_header, new_header, 1)
+
+          old_render = '{view===\'account\'&&<Account/>}\n <section className="border-y border-border bg-secondary'
+          new_render = '{view===\'account\'&&<Account/>}\n {cartOpen&&<Cart items={cart} onClose={()=>setCartOpen(false)} />}\n <section className="border-y border-border bg-secondary'
+          if old_render not in s:
+              raise SystemExit('render marker not found')
+          s = s.replace(old_render, new_render, 1)
+
+          old_test_book = "<button onClick={()=>window.alert(`${t.title} added to your demo care journey.`)} className=\"rounded-xl bg-primary px-3 py-2 text-sm font-bold text-primary-foreground\">Book</button>"
+          new_test_book = "<button onClick={()=>{addToCart({title:t.title,type:'Test',price:t.price,detail:t.detail});setSelected(null)}} className=\"rounded-xl bg-primary px-3 py-2 text-sm font-bold text-primary-foreground\">Add to cart</button>"
+          if old_test_book not in s:
+              raise SystemExit('test card button marker not found')
+          s = s.replace(old_test_book, new_test_book, 1)
+
+          old_test_modal = "<button onClick={()=>{window.alert(`${selected.title} added to your demo care journey.`);setSelected(null)}} className=\"w-full rounded-xl bg-primary px-4 py-3 font-bold text-primary-foreground\">Book this test</button>"
+          new_test_modal = "<button onClick={()=>{addToCart({title:selected.title,type:'Test',price:selected.price,detail:selected.detail});setSelected(null)}} className=\"w-full rounded-xl bg-primary px-4 py-3 font-bold text-primary-foreground\">Add to cart</button>"
+          if old_test_modal not in s:
+              raise SystemExit('test modal button marker not found')
+          s = s.replace(old_test_modal, new_test_modal, 1)
+
+          old_package_card = "<button onClick={()=>window.alert(`${p.title} selected for this demo.`)} className=\"rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground\">Choose</button>"
+          new_package_card = "<button onClick={()=>addToCart({title:p.title,type:'Package',price:p.price,detail:p.detail})} className=\"rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground\">Add to cart</button>"
+          if old_package_card not in s:
+              raise SystemExit('package card button marker not found')
+          s = s.replace(old_package_card, new_package_card, 1)
+
+          old_package_modal = "<button onClick={()=>{window.alert(`${selected.title} selected for this demo.`);setSelected(null)}} className=\"w-full rounded-xl bg-primary px-4 py-3 font-bold text-primary-foreground\">Choose this package</button>"
+          new_package_modal = "<button onClick={()=>{addToCart({title:selected.title,type:'Package',price:selected.price,detail:selected.detail});setSelected(null)}} className=\"w-full rounded-xl bg-primary px-4 py-3 font-bold text-primary-foreground\">Add to cart</button>"
+          if old_package_modal not in s:
+              raise SystemExit('package modal button marker not found')
+          s = s.replace(old_package_modal, new_package_modal, 1)
+
+          marker = "function DoctorCall({doctor,connected,seconds,onAccept,onDecline,onEnd}"
+          if marker not in s:
+              raise SystemExit('component insertion marker not found')
+          cart_component = '''function Cart({items,onClose}:{items:CartItem[];onClose:()=>void}){\n const [paymentOpen,setPaymentOpen]=useState(false);\n const total=items.reduce((sum,item)=>sum+item.price*item.quantity,0);\n const update=(title:string,type:'Test'|'Package',delta:number)=>{const current=readCart();const next=current.map(item=>item.title===title&&item.type===type?{...item,quantity:item.quantity+delta}:item).filter(item=>item.quantity>0);window.localStorage.setItem(CART_KEY,JSON.stringify(next));window.dispatchEvent(new Event('medthread-cart-updated'))};\n const clear=()=>{window.localStorage.removeItem(CART_KEY);window.dispatchEvent(new Event('medthread-cart-updated'))};\n return <div className="fixed inset-0 z-[95] bg-foreground/60 p-4 sm:p-6">\n   <div className="ml-auto flex h-full w-full max-w-xl flex-col rounded-[2rem] bg-card shadow-2xl">\n     <div className="flex items-center justify-between border-b border-border p-5"><div><p className="eyebrow">Your selected care</p><h2 className="mt-1 font-display text-2xl font-bold">My Cart</h2></div><button onClick={onClose} className="grid size-9 place-items-center rounded-full bg-secondary"><X className="size-4"/></button></div>\n     <div className="flex-1 overflow-y-auto p-5">{!items.length?<div className="grid min-h-[45vh] place-items-center text-center"><div><ShoppingCart className="mx-auto size-12 text-muted-foreground"/><h3 className="mt-4 font-display text-xl font-bold">Your cart is empty</h3><p className="mt-2 text-sm text-muted-foreground">Add tests or care packages from Tests & Reports or Care Packages.</p></div></div>:<div className="space-y-3">{items.map(item=><article key={`${item.type}-${item.title}`} className="rounded-2xl border border-border bg-background p-4"><div className="flex items-start gap-3"><span className="grid size-10 place-items-center rounded-xl bg-secondary text-primary">{item.type==='Test'?<TestTube2 className="size-4"/>:<Users className="size-4"/>}</span><div className="min-w-0 flex-1"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wider text-primary">{item.type}</p><h3 className="mt-1 font-bold">{item.title}</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">{item.detail}</p></div><strong className="font-display text-lg text-primary">₹{item.price*item.quantity}</strong></div><div className="mt-3 flex items-center justify-between"><div className="flex items-center gap-2 rounded-xl bg-secondary p-1"><button onClick={()=>update(item.title,item.type,-1)} className="grid size-7 place-items-center rounded-lg bg-card"><Minus className="size-3"/></button><span className="min-w-5 text-center text-sm font-bold">{item.quantity}</span><button onClick={()=>update(item.title,item.type,1)} className="grid size-7 place-items-center rounded-lg bg-card"><Plus className="size-3"/></button></div><button onClick={()=>update(item.title,item.type,-item.quantity)} className="inline-flex items-center gap-1 text-xs font-bold text-destructive"><Trash2 className="size-3"/>Remove</button></div></div></div></article>)}</div>}\n     </div>\n     <div className="border-t border-border bg-secondary/50 p-5">{items.length>0&&<><div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Items</span><strong>{items.reduce((n,i)=>n+i.quantity,0)}</strong></div><div className="mt-2 flex items-center justify-between"><span className="font-bold">Total</span><strong className="font-display text-2xl text-primary">₹{total}</strong></div><div className="mt-4 grid gap-2 sm:grid-cols-2"><button onClick={clear} className="rounded-xl border border-border px-4 py-3 text-sm font-bold">Clear cart</button><button onClick={()=>setPaymentOpen(true)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 font-bold text-primary-foreground"><CreditCard className="size-4"/>Go to payment</button></div><p className="mt-3 text-center text-[11px] leading-4 text-muted-foreground">Demo checkout only — no real payment is processed.</p></>}</div>\n   </div>\n   {paymentOpen&&<Modal title="Demo payment" onClose={()=>setPaymentOpen(false)}><div className="space-y-4"><div className="rounded-2xl bg-secondary p-4"><div className="flex justify-between text-sm"><span>Cart total</span><strong>₹{total}</strong></div><p className="mt-2 text-xs leading-5 text-muted-foreground">This prototype does not connect to a payment gateway. Use this screen to demonstrate the checkout flow.</p></div><div className="rounded-2xl border border-border p-4"><p className="text-sm font-bold">Payment method</p><div className="mt-3 grid grid-cols-2 gap-2"><button className="rounded-xl border border-primary bg-secondary px-3 py-3 text-sm font-bold">UPI</button><button className="rounded-xl border border-border px-3 py-3 text-sm font-bold">Card</button></div></div><button onClick={()=>{setPaymentOpen(false);onClose();window.alert('Demo order confirmed. No real payment was processed.')}} className="w-full rounded-xl bg-primary px-4 py-3 font-bold text-primary-foreground">Confirm demo payment · ₹{total}</button></div></Modal>}\n </div>}\n\n'''
+          s = s.replace(marker, cart_component + marker, 1)
+
+          p.write_text(s)
+          PY
+      - name: Verify build syntax
+        run: |
+          test -s app/page.tsx
+          grep -q 'My Cart' app/page.tsx
+          grep -q 'Go to payment' app/page.tsx
+      - name: Commit updated cart flow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/page.tsx
+          git diff --cached --quiet || git commit -m 'Add tests and packages cart flow'
+          git push
