@@ -1,0 +1,82 @@
+name: Expand AI triage safely
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  update-triage:
+    if: github.event.head_commit.message != 'Expand AI triage symptoms safely'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Expand symptom recognition
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('app/page.tsx')
+          text = path.read_text(encoding='utf-8')
+
+          block = r'''const SYMPTOMS = [
+          {id:'fever',severity:2,specialty:'General Physician',label:{en:'Fever',hi:'बुखार',bn:'জ্বর'},keywords:{en:['fever','high temperature','feverish','temperature','running a fever'],hi:['बुखार','ज्वर','तेज बुखार','ताप'],bn:['জ্বর','গা গরম']}},
+          {id:'chills',severity:1,specialty:'General Physician',label:{en:'Chills',hi:'ठंड लगना',bn:'ঠান্ডা লাগা'},keywords:{en:['chills','shivering','cold sweats'],hi:['ठंड लगना','कंपकंपी','ठिठुरन'],bn:['ঠান্ডা লাগা','কাঁপুনি']}},
+          {id:'dizziness',severity:2,specialty:'General Physician',label:{en:'Dizziness',hi:'चक्कर आना',bn:'মাথা ঘোরা'},keywords:{en:['dizzy','dizziness','lightheaded','light headed','vertigo','room is spinning'],hi:['चक्कर','चक्कर आना','सिर घूमना'],bn:['মাথা ঘোরা','মাথা ঘুরছে','চারপাশ ঘুরছে']}},
+          {id:'headache',severity:1,specialty:'General Physician',label:{en:'Headache',hi:'सिरदर्द',bn:'মাথাব্যথা'},keywords:{en:['headache','head pain','head ache','pain in my head','head hurts'],hi:['सिरदर्द','सिर दर्द','सिर में दर्द'],bn:['মাথাব্যথা','মাথা ব্যথা']}},
+          {id:'cough',severity:1,specialty:'General Physician',label:{en:'Cough',hi:'खांसी',bn:'কাশি'},keywords:{en:['cough','coughing','dry cough','wet cough'],hi:['खांसी','खाँसी','सूखी खांसी'],bn:['কাশি','শুকনো কাশি']}},
+          {id:'sorethroat',severity:1,specialty:'ENT',label:{en:'Sore throat',hi:'गले में खराश',bn:'গলা ব্যথা'},keywords:{en:['sore throat','throat pain','scratchy throat','painful throat','hurts to swallow'],hi:['गले में खराश','गला दर्द','गले में दर्द'],bn:['গলা ব্যথা','গলায় ব্যথা','গিলতে ব্যথা']}},
+          {id:'runny_nose',severity:1,specialty:'ENT',label:{en:'Runny or blocked nose',hi:'नाक बहना या बंद होना',bn:'নাক দিয়ে জল পড়া বা নাক বন্ধ'},keywords:{en:['runny nose','nose is running','blocked nose','stuffy nose','nasal congestion'],hi:['नाक बहना','नाक बह रही','नाक बंद','नाक जाम'],bn:['নাক দিয়ে জল পড়া','নাক বন্ধ']}},
+          {id:'sneezing',severity:1,specialty:'ENT',label:{en:'Sneezing',hi:'छींक आना',bn:'হাঁচি'},keywords:{en:['sneezing','sneeze','sneezing a lot'],hi:['छींक','छींक आना'],bn:['হাঁচি','বারবার হাঁচি']}},
+          {id:'bodyache',severity:1,specialty:'General Physician',label:{en:'Body ache',hi:'बदन दर्द',bn:'গা ব্যথা'},keywords:{en:['body ache','muscle ache','body pain','muscle pain','whole body hurts'],hi:['बदन दर्द','शरीर में दर्द','मांसपेशियों में दर्द'],bn:['গা ব্যথা','শরীরে ব্যথা','পেশীতে ব্যথা']}},
+          {id:'fatigue',severity:1,specialty:'General Physician',label:{en:'Fatigue or weakness',hi:'थकान या कमजोरी',bn:'ক্লান্তি বা দুর্বলতা'},keywords:{en:['weakness','fatigue','tired','very tired','exhausted','no energy','low energy'],hi:['कमजोरी','थकान','बहुत थकान','कमजोर महसूस'],bn:['দুর্বলতা','ক্লান্তি','খুব ক্লান্ত','শক্তি নেই']}},
+          {id:'legpain',severity:1,specialty:'Orthopaedics',label:{en:'Leg pain',hi:'पैर में दर्द',bn:'পায়ে ব্যথা'},keywords:{en:['leg pain','pain in leg','sore leg','leg soreness','my leg hurts'],hi:['पैर में दर्द','पैर दुख रहा'],bn:['পায়ে ব্যথা','পা ব্যথা']}},
+          {id:'jointpain',severity:1,specialty:'Orthopaedics',label:{en:'Joint pain or stiffness',hi:'जोड़ों का दर्द या अकड़न',bn:'জয়েন্টে ব্যথা বা শক্তভাব'},keywords:{en:['joint pain','joint hurts','painful joints','stiffness','knee pain','knee hurts'],hi:['जोड़ों में दर्द','अकड़न','घुटने में दर्द'],bn:['জয়েন্টে ব্যথা','হাঁটু ব্যথা','শক্তভাব']}},
+          {id:'backpain',severity:1,specialty:'Orthopaedics',label:{en:'Back pain',hi:'कमर या पीठ में दर्द',bn:'পিঠ বা কোমরে ব্যথা'},keywords:{en:['back pain','lower back pain','back ache','my back hurts'],hi:['कमर दर्द','पीठ में दर्द','कमर में दर्द'],bn:['পিঠে ব্যথা','কোমরে ব্যথা']}},
+          {id:'neckpain',severity:1,specialty:'Orthopaedics',label:{en:'Neck pain',hi:'गर्दन में दर्द',bn:'ঘাড়ে ব্যথা'},keywords:{en:['neck pain','neck ache','stiff neck','my neck hurts'],hi:['गर्दन में दर्द','गर्दन अकड़ना'],bn:['ঘাড়ে ব্যথা','ঘাড় শক্ত']}},
+          {id:'stomachpain',severity:2,specialty:'Gastroenterology',label:{en:'Stomach or abdominal pain',hi:'पेट दर्द',bn:'পেটে ব্যথা'},keywords:{en:['stomach ache','stomach pain','abdominal pain','tummy ache','belly pain','stomach hurts'],hi:['पेट दर्द','पेट में दर्द','पेट दुख रहा'],bn:['পেটে ব্যথা','পেট ব্যথা','পেটের ব্যথা']}},
+          {id:'diarrhea',severity:2,specialty:'Gastroenterology',label:{en:'Diarrhea or loose stools',hi:'दस्त या पतले दस्त',bn:'ডায়রিয়া বা পাতলা পায়খানা'},keywords:{en:['diarrhea','diarrhoea','explosive diarrhea','explosive diarrhoea','loose motion','loose motions','loose stool','loose stools','watery stool','watery stools','frequent diarrhea','runny stool'],hi:['दस्त','पतले दस्त','दस्त हो रहे','पतला दस्त','लूज मोशन','बार बार दस्त','पानी जैसे दस्त'],bn:['ডায়রিয়া','ডায়রিয়া','পাতলা পায়খানা','পাতলা পায়খানা','বারবার পায়খানা','জল পায়খানা']}},
+          {id:'constipation',severity:1,specialty:'Gastroenterology',label:{en:'Constipation',hi:'कब्ज',bn:'কোষ্ঠকাঠিন্য'},keywords:{en:['constipation','constipated','hard stool','difficulty passing stool','cannot poop','cant poop'],hi:['कब्ज','कब्ज है','पाखाना नहीं'],bn:['কোষ্ঠকাঠিন্য','পায়খানা হচ্ছে না','শক্ত পায়খানা']}},
+          {id:'nausea',severity:2,specialty:'Gastroenterology',label:{en:'Nausea',hi:'जी मिचलाना',bn:'বমি বমি ভাব'},keywords:{en:['nausea','nauseous','queasy','feeling sick','feel sick'],hi:['जी मिचलाना','मतली','उबकाई','जी खराब'],bn:['বমি বমি ভাব','বমি বমি লাগছে']}},
+          {id:'vomiting',severity:2,specialty:'Gastroenterology',label:{en:'Vomiting',hi:'उल्टी',bn:'বমি'},keywords:{en:['vomiting','vomit','throwing up','threw up'],hi:['उल्टी','उल्टी हो रही'],bn:['বমি','বমি হচ্ছে']}},
+          {id:'bloating',severity:1,specialty:'Gastroenterology',label:{en:'Bloating or acidity',hi:'पेट फूलना या एसिडिटी',bn:'পেট ফাঁপা বা অম্বল'},keywords:{en:['bloating','bloated','acidity','acid reflux','heartburn','gas in stomach'],hi:['पेट फूलना','गैस','एसिडिटी','सीने में जलन'],bn:['পেট ফাঁপা','অম্বল','গ্যাস','বুক জ্বালা']}},
+          {id:'chestpain',severity:3,specialty:'Emergency / Cardiology',label:{en:'Chest pain or pressure',hi:'सीने में दर्द या दबाव',bn:'বুকে ব্যথা বা চাপ'},keywords:{en:['chest pain','chest pressure','tightness in chest','chest tightness','pressure in chest'],hi:['सीने में दर्द','छाती में दर्द','सीने में दबाव'],bn:['বুকে ব্যথা','বুক ব্যথা','বুকে চাপ']}},
+          {id:'breathless',severity:3,specialty:'Emergency / Cardiology',label:{en:'Breathlessness',hi:'सांस लेने में तकलीफ',bn:'শ্বাসকষ্ট'},keywords:{en:['breathless','shortness of breath','difficulty breathing','cant breathe',"can't breathe",'breathing difficulty'],hi:['सांस लेने में तकलीफ','सांस फूलना','सांस लेने में दिक्कत'],bn:['শ্বাসকষ্ট','শ্বাস নিতে কষ্ট']}},
+          {id:'palpitations',severity:3,specialty:'Emergency / Cardiology',label:{en:'Palpitations',hi:'दिल की धड़कन तेज या अनियमित',bn:'হৃদস্পন্দন বেড়ে যাওয়া'},keywords:{en:['palpitations','heart racing','heart pounding','irregular heartbeat','heart fluttering'],hi:['दिल तेज धड़कना','दिल की धड़कन तेज','धड़कन बढ़ना'],bn:['হৃদস্পন্দন বেড়ে যাওয়া','বুক ধড়ফড়']}},
+          {id:'fainting',severity:3,specialty:'Emergency / Cardiology',label:{en:'Fainting or near fainting',hi:'बेहोशी या बेहोश जैसा',bn:'অজ্ঞান বা অজ্ঞান লাগা'},keywords:{en:['fainted','fainting','passed out','almost fainted','nearly fainted'],hi:['बेहोश','बेहोशी','बेहोश जैसा'],bn:['অজ্ঞান','জ্ঞান হারিয়েছি']}},
+          {id:'swelling',severity:2,specialty:'General Physician',label:{en:'Swelling',hi:'सूजन',bn:'ফোলা'},keywords:{en:['swelling','swollen','swollen feet','swollen legs','ankle swelling','face swelling'],hi:['सूजन','पैर में सूजन','चेहरे पर सूजन'],bn:['ফোলা','পায়ে ফোলা','মুখ ফুলে']}},
+          {id:'wheezing',severity:2,specialty:'Pulmonology',label:{en:'Wheezing',hi:'सांस में सीटी',bn:'শ্বাসে সাঁই সাঁই'},keywords:{en:['wheezing','wheeze','whistling when breathing'],hi:['सांस में सीटी','सांस लेते समय सीटी'],bn:['শ্বাসে সাঁই সাঁই']}},
+          {id:'phlegm',severity:1,specialty:'Pulmonology',label:{en:'Phlegm or mucus',hi:'बलगम',bn:'কফ'},keywords:{en:['phlegm','mucus','coughing up phlegm','cough with mucus'],hi:['बलगम','कफ','बलगम वाली खांसी'],bn:['কফ','শ্লেষ্মা','কফ উঠছে']}},
+          {id:'earpain',severity:1,specialty:'ENT',label:{en:'Ear pain',hi:'कान में दर्द',bn:'কানে ব্যথা'},keywords:{en:['ear pain','earache','ear ache','pain in my ear'],hi:['कान में दर्द','कान दर्द'],bn:['কানে ব্যথা','কান ব্যথা']}},
+          {id:'hearing',severity:1,specialty:'ENT',label:{en:'Hearing difficulty',hi:'सुनने में कठिनाई',bn:'শুনতে অসুবিধা'},keywords:{en:['hearing loss','hearing difficulty','cannot hear','cant hear','muffled hearing'],hi:['सुनाई नहीं देना','सुनने में दिक्कत','कम सुनाई'],bn:['শুনতে পাচ্ছি না','শুনতে অসুবিধা']}},
+          {id:'eye',severity:2,specialty:'Ophthalmology',label:{en:'Eye pain or redness',hi:'आंख में दर्द या लालिमा',bn:'চোখে ব্যথা বা লালভাব'},keywords:{en:['eye pain','pain in my eye','red eye','redness in eye','eye irritation'],hi:['आंख में दर्द','आंख लाल','आंखों में जलन'],bn:['চোখে ব্যথা','চোখ লাল','চোখে জ্বালা']}},
+          {id:'vision',severity:3,specialty:'Ophthalmology',label:{en:'Blurred or sudden vision change',hi:'धुंधला या अचानक दृष्टि परिवर्तन',bn:'ঝাপসা বা হঠাৎ দৃষ্টির পরিবর্তন'},keywords:{en:['blurred vision','blurry vision','vision is blurry','sudden vision change','cannot see clearly','cant see clearly','loss of vision'],hi:['धुंधला दिखाई','दृष्टि धुंधली','अचानक दिखना कम'],bn:['ঝাপসা দেখা','দৃষ্টি ঝাপসা','হঠাৎ দেখতে পাচ্ছি না']}},
+          {id:'urinary',severity:2,specialty:'General Physician',label:{en:'Burning urination',hi:'पेशाब में जलन',bn:'প্রস্রাবে জ্বালা'},keywords:{en:['burning urination','burning when urinating','pain when peeing','painful urination','burning pee'],hi:['पेशाब में जलन','पेशाब करते समय जलन','पेशाब में दर्द'],bn:['প্রস্রাবে জ্বালা','প্রস্রাবের সময় জ্বালা','প্রস্রাবে ব্যথা']}},
+          {id:'frequent_urination',severity:1,specialty:'General Physician',label:{en:'Frequent urination',hi:'बार-बार पेशाब आना',bn:'বারবার প্রস্রাব'},keywords:{en:['frequent urination','urinating often','peeing often','need to pee often'],hi:['बार बार पेशाब','बार-बार पेशाब आना'],bn:['বারবার প্রস্রাব','ঘন ঘন প্রস্রাব']}},
+          {id:'blood_urine',severity:3,specialty:'General Physician',label:{en:'Blood in urine',hi:'पेशाब में खून',bn:'প্রস্রাবে রক্ত'},keywords:{en:['blood in urine','bloody urine','red urine','pink urine'],hi:['पेशाब में खून','पेशाब लाल'],bn:['প্রস্রাবে রক্ত','প্রস্রাব লাল']}},
+          {id:'pelvic',severity:2,specialty:'Gynaecology',label:{en:'Pelvic or lower abdominal pain',hi:'पेल्विक या निचले पेट में दर्द',bn:'তলপেটে বা পেলভিকে ব্যথা'},keywords:{en:['pelvic pain','lower abdominal pain','lower belly pain','pain in pelvis'],hi:['पेल्विक दर्द','निचले पेट में दर्द'],bn:['তলপেটে ব্যথা','পেলভিকে ব্যথা']}},
+          {id:'menstrual',severity:1,specialty:'Gynaecology',label:{en:'Menstrual pain',hi:'मासिक धर्म में दर्द',bn:'মাসিকের ব্যথা'},keywords:{en:['period pain','menstrual pain','period cramps','menstrual cramps','painful periods'],hi:['पीरियड दर्द','मासिक धर्म में दर्द','माहवारी में दर्द'],bn:['মাসিকের ব্যথা','পিরিয়ডে ব্যথা']}},
+          {id:'abnormal_bleeding',severity:2,specialty:'Gynaecology',label:{en:'Unusual bleeding',hi:'असामान्य रक्तस्राव',bn:'অস্বাভাবিক রক্তপাত'},keywords:{en:['unusual bleeding','abnormal bleeding','heavy bleeding','bleeding between periods','unexpected bleeding'],hi:['असामान्य रक्तस्राव','बहुत ज्यादा रक्तस्राव','पीरियड के बीच खून'],bn:['অস্বাভাবিক রক্তপাত','অতিরিক্ত রক্তপাত','পিরিয়ডের মাঝে রক্তপাত']}},
+          {id:'injury',severity:3,specialty:'Emergency / Cardiology',label:{en:'Accident or significant injury',hi:'दुर्घटना या गंभीर चोट',bn:'দুর্ঘটনা বা গুরুতর আঘাত'},keywords:{en:['accident','serious accident','injury','injured','major injury','trauma','road accident','car accident','bike accident','fall injury'],hi:['दुर्घटना','गंभीर दुर्घटना','एक्सीडेंट','चोट','गंभीर चोट','सड़क दुर्घटना','बाइक दुर्घटना'],bn:['দুর্ঘটনা','গুরুতর দুর্ঘটনা','আঘাত','চোট','গুরুতর চোট','রাস্তায় দুর্ঘটনা']}},
+          {id:'burn',severity:3,specialty:'Emergency / Cardiology',label:{en:'Burn',hi:'जलना',bn:'পোড়া'},keywords:{en:['burn','burned','burnt','burn injury','serious burn'],hi:['जलना','जल गया','जलने की चोट','गंभीर जलन'],bn:['পোড়া','পুড়ে গেছে','পোড়ার চোট']}},
+          {id:'bleeding',severity:3,specialty:'Emergency / Cardiology',label:{en:'Significant bleeding or wound',hi:'खून बहना या गंभीर घाव',bn:'রক্তপাত বা গুরুতর ক্ষত'},keywords:{en:['heavy bleeding','severe bleeding','bleeding a lot','wound bleeding','deep wound','deep cut','blood will not stop','bleeding wont stop'],hi:['बहुत खून बहना','खून बहुत बह रहा','गहरा घाव','गहरा कट','खून नहीं रुक रहा'],bn:['অনেক রক্তপাত','রক্ত বন্ধ হচ্ছে না','গভীর ক্ষত']}},
+          {id:'numbness',severity:3,specialty:'Emergency / Cardiology',label:{en:'Numbness or one-sided weakness',hi:'सुन्नपन या एक तरफ कमजोरी',bn:'অবশভাব বা একপাশ দুর্বল'},keywords:{en:['numbness','numb','one sided weakness','one-sided weakness','weakness on one side','face drooping','sudden numbness'],hi:['सुन्नपन','सुन्न','एक तरफ कमजोरी','चेहरा टेढ़ा'],bn:['অবশভাব','অবশ','একপাশ দুর্বল','মুখ বেঁকে যাওয়া']}},
+          {id:'confusion',severity:3,specialty:'Emergency / Cardiology',label:{en:'Confusion or altered awareness',hi:'भ्रम या होश में बदलाव',bn:'বিভ্রান্তি বা চেতনার পরিবর্তন'},keywords:{en:['confusion','confused','disoriented','altered consciousness','not fully aware'],hi:['भ्रम','भ्रमित','होश में नहीं'],bn:['বিভ্রান্ত','চেতনা পরিবর্তন']}},
+          {id:'seizure',severity:3,specialty:'Emergency / Cardiology',label:{en:'Seizure',hi:'दौरा',bn:'খিঁচুনি'},keywords:{en:['seizure','seizures','convulsion','convulsions','fit','had a fit'],hi:['दौरा','दौरे','झटके'],bn:['খিঁচুনি','খিঁচুনি হয়েছে','ফিট']}},
+          {id:'toothache',severity:1,specialty:'General Physician',label:{en:'Tooth or jaw pain',hi:'दांत या जबड़े में दर्द',bn:'দাঁত বা চোয়ালে ব্যথা'},keywords:{en:['toothache','tooth pain','teeth pain','jaw pain','pain in tooth'],hi:['दांत में दर्द','दांत दर्द','जबड़े में दर्द'],bn:['দাঁতে ব্যথা','দাঁত ব্যথা','চোয়ালে ব্যথা']}},
+          {id:'persistent_fever',severity:2,specialty:'General Physician',label:{en:'Persistent or high fever',hi:'लगातार या तेज बुखार',bn:'দীর্ঘস্থায়ী বা উচ্চ জ্বর'},keywords:{en:['high fever','very high fever','persistent fever','fever for days','fever for several days'],hi:['तेज बुखार','बहुत तेज बुखार','लगातार बुखार','कई दिन से बुखार'],bn:['উচ্চ জ্বর','অনেক বেশি জ্বর','কয়েকদিন ধরে জ্বর']}},
+          ]'''
+
+          text = re.sub(r"const SYMPTOMS = \[.*?\]\n\nconst TRIAGE_STRINGS", block + "\n\nconst TRIAGE_STRINGS", text, count=1, flags=re.S)
+          path.write_text(text, encoding='utf-8')
+          PY
+      - name: Commit safe symptom update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/page.tsx
+          git diff --cached --quiet || git commit -m "Expand AI triage symptoms safely"
+          git push
