@@ -10,18 +10,27 @@ export default function SOSPage() {
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
       if (!AudioContextClass) return
       const ctx = new AudioContextClass()
-      const oscillator = ctx.createOscillator()
-      const gain = ctx.createGain()
-      oscillator.type = 'sine'
-      oscillator.frequency.value = 880
-      gain.gain.setValueAtTime(0.0001, ctx.currentTime)
-      gain.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.01)
-      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.16)
-      oscillator.connect(gain)
-      gain.connect(ctx.destination)
-      oscillator.start()
-      oscillator.stop(ctx.currentTime + 0.16)
-      oscillator.onended = () => { void ctx.close() }
+
+      const playBeep = (startTime: number, frequency: number) => {
+        const oscillator = ctx.createOscillator()
+        const gain = ctx.createGain()
+        oscillator.type = 'sine'
+        oscillator.frequency.value = frequency
+        gain.gain.setValueAtTime(0.0001, startTime)
+        gain.gain.exponentialRampToValueAtTime(0.3, startTime + 0.015)
+        gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.2)
+        oscillator.connect(gain)
+        gain.connect(ctx.destination)
+        oscillator.start(startTime)
+        oscillator.stop(startTime + 0.2)
+      }
+
+      playBeep(ctx.currentTime, 880)
+      playBeep(ctx.currentTime + 0.24, 1040)
+
+      window.setTimeout(() => {
+        void ctx.close()
+      }, 600)
     } catch {
       // Audio is optional; the SOS page must still work if the browser blocks it.
     }
